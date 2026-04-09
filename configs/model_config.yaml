@@ -1,0 +1,54 @@
+model:
+  name: "smartbet_two_tower"
+  embedding_dim: 64
+  final_embedding_dim: 32
+  user_tower:
+    hidden_dims: [128, 64]
+    dropout: 0.2
+  market_tower:
+    hidden_dims: [128, 64]
+    dropout: 0.2
+  temperature: 0.1
+
+training:
+  epochs: 20
+  batch_size: 256
+  learning_rate: 0.001
+  weight_decay: 1e-5
+  scheduler: "cosine"
+  early_stopping_patience: 5
+  n_negatives: 4
+
+data:
+  n_users: 1500
+  n_markets: 2000
+  n_interactions: 75000
+  train_ratio: 0.7
+  val_ratio: 0.15
+  test_ratio: 0.15
+  sports:
+    - "Premier League"
+    - "La Liga"
+    - "NBA"
+    - "NFL"
+    - "Serie A"
+    - "Bundesliga"
+    - "Champions League"
+    - "ATP Tennis"
+    - "UFC"
+    - "Formula 1"
+  market_types:
+    - "match_result"
+    - "over_under"
+    - "handicap"
+    - "both_teams_score"
+    - "correct_score"
+    - "first_goalscorer"
+    - "half_time_result"
+    - "accumulator"
+
+mlops:
+  mlflow_tracking_uri: "sqlite:///mlflow.db"
+  experiment_name: "smartbet_two_tower"
+  drift_threshold: 0.05
+  performance_threshold_ndcg: 0.60

@@ -1,0 +1,59 @@
+{
+  "users": {
+    "user_id": {"type": "int", "min": 0, "required": true},
+    "preferred_sport": {
+      "type": "str",
+      "allowed": [
+        "Premier League",
+        "La Liga",
+        "NBA",
+        "NFL",
+        "Serie A",
+        "Bundesliga",
+        "Champions League",
+        "ATP Tennis",
+        "UFC",
+        "Formula 1"
+      ],
+      "required": true
+    },
+    "avg_stake": {"type": "float", "min": 1.0, "max": 10000.0, "required": true},
+    "bet_frequency_per_week": {"type": "int", "min": 0, "max": 100, "required": true},
+    "loyalty_tier": {
+      "type": "str",
+      "allowed": ["bronze", "silver", "gold", "platinum"],
+      "required": true
+    },
+    "account_age_days": {"type": "int", "min": 0, "required": true},
+    "responsible_gambling_flag": {"type": "bool", "required": true}
+  },
+  "interactions": {
+    "interaction_id": {"type": "int", "min": 0, "required": true},
+    "user_id": {"type": "int", "min": 0, "required": true},
+    "market_id": {"type": "int", "min": 0, "required": true},
+    "sport": {"type": "str", "required": true},
+    "market_type": {"type": "str", "required": true},
+    "stake": {"type": "float", "min": 0.5, "required": true},
+    "odds": {"type": "float", "min": 1.01, "required": true},
+    "outcome": {
+      "type": "str",
+      "allowed": ["win", "loss", "void", "cash_out"],
+      "required": true
+    },
+    "timestamp": {"type": "datetime", "required": true}
+  },
+  "markets": {
+    "market_id": {"type": "int", "min": 0, "required": true},
+    "sport": {"type": "str", "required": true},
+    "market_type": {"type": "str", "required": true},
+    "odds_home": {"type": "float", "min": 1.01, "required": true},
+    "odds_away": {"type": "float", "min": 1.01, "required": true},
+    "popularity_score": {"type": "float", "min": 0.0, "max": 1.0, "required": true},
+    "is_live": {"type": "bool", "required": true},
+    "event_prominence": {
+      "type": "str",
+      "allowed": ["low", "medium", "high", "marquee"],
+      "required": true
+    }
+  }
+}
