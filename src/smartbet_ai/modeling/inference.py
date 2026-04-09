@@ -61,6 +61,16 @@ def recommend_for_user(
     if user_id not in bundle.users.index:
         raise KeyError(f"Unknown user_id: {user_id}")
 
+    # Responsible Gambling gate — no recommendations for flagged users
+    user_row_check = bundle.users.loc[user_id]
+    if isinstance(user_row_check, pd.DataFrame):
+        user_row_check = user_row_check.iloc[0]
+    if bool(user_row_check.get("responsible_gambling_flag", False)):
+        raise ValueError(
+            f"User {user_id} has an active responsible gambling flag. "
+            "Recommendations are restricted for this account."
+        )
+
     candidate_markets = bundle.markets.copy()
     candidate_indices = candidate_markets.index
 

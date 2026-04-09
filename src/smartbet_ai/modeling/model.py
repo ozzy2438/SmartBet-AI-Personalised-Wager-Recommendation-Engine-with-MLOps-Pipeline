@@ -19,7 +19,7 @@ class UserTower(nn.Module):
         num_users: int,
         num_sports: int,
         embedding_dim: int = 64,
-        n_features: int = len(USER_FEATURE_COLUMNS),
+        n_features: int = len(USER_FEATURE_COLUMNS) - 1,  # sport_encoded excluded (embedded separately)
         hidden_dims: list[int] | None = None,
         dropout: float = 0.2,
         final_embedding_dim: int = 32,
@@ -50,7 +50,9 @@ class UserTower(nn.Module):
         user_embedding = self.user_embedding(user_ids)
         sport_indices = user_features[:, 0].long()
         sport_embedding = self.sport_embedding(sport_indices)
-        x = torch.cat([user_embedding, sport_embedding, user_features], dim=-1)
+        # Exclude sport_encoded (col 0) — already captured by sport_embedding
+        dense_features = user_features[:, 1:]
+        x = torch.cat([user_embedding, sport_embedding, dense_features], dim=-1)
         x = self.network(x)
         x = self.output_layer(x)
         return F.normalize(x, p=2, dim=-1)
@@ -65,7 +67,7 @@ class MarketTower(nn.Module):
         num_sports: int,
         num_market_types: int,
         embedding_dim: int = 64,
-        n_features: int = len(MARKET_FEATURE_COLUMNS),
+        n_features: int = len(MARKET_FEATURE_COLUMNS) - 2,  # sport_encoded + market_type_encoded excluded (embedded separately)
         hidden_dims: list[int] | None = None,
         dropout: float = 0.2,
         final_embedding_dim: int = 32,
@@ -101,7 +103,9 @@ class MarketTower(nn.Module):
         sport_embedding = self.sport_embedding(sport_indices)
         market_type_embedding = self.market_type_embedding(market_type_indices)
 
-        x = torch.cat([market_embedding, sport_embedding, market_type_embedding, market_features], dim=-1)
+        # Exclude sport_encoded (col 0) and market_type_encoded (col 1) — already embedded
+        dense_features = market_features[:, 2:]
+        x = torch.cat([market_embedding, sport_embedding, market_type_embedding, dense_features], dim=-1)
         x = self.network(x)
         x = self.output_layer(x)
         return F.normalize(x, p=2, dim=-1)
