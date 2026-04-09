@@ -15,6 +15,8 @@ if str(SRC_DIR) not in sys.path:
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=str(PROJECT_ROOT / ".env"))
 
 from smartbet_ai.common.paths import MODELS_DIR
 from smartbet_ai.modeling.inference import load_serving_bundle, recommend_for_user
@@ -253,7 +255,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigation",
-        ["Overview", "Model Performance", "Data Drift", "Recommendations", "Model Registry"],
+        ["Overview", "Model Performance", "Data Drift", "Recommendations", "Model Registry", "MLOps Agent"],
         label_visibility="collapsed",
     )
 
@@ -573,3 +575,169 @@ elif page == "Model Registry":
                 height=280, margin=dict(t=10, b=10, l=0, r=0),
             )
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: MLOPS AGENT
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "MLOps Agent":
+    st.markdown("## MLOps Agent")
+    st.markdown(
+        "<div style='color:#475569;font-size:14px;margin-bottom:24px'>"
+        "GPT-4 powered automation agent. Type any instruction in plain English — "
+        "the agent decides which MLOps tool to run and returns a structured result.</div>",
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<div class='section-title'>Quick Actions</div>", unsafe_allow_html=True)
+    qa1, qa2, qa3, qa4 = st.columns(4)
+    quick_instruction = None
+    if qa1.button("📊  Check Performance"):
+        quick_instruction = "Is our model performing well enough? Check if NDCG at 10 is above 0.6"
+    if qa2.button("🔍  Detect Drift"):
+        quick_instruction = "Has there been any data drift recently?"
+    if qa3.button("📄  Commercial Report"):
+        quick_instruction = "Generate a report for the commercial team"
+    if qa4.button("🗂  Model Status"):
+        quick_instruction = "What is the current status of our model?"
+
+    st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>Custom Instruction</div>", unsafe_allow_html=True)
+    user_input = st.text_input(
+        "Ask the agent anything",
+        placeholder="e.g.  Retrain the model because drift was detected",
+        label_visibility="collapsed",
+    )
+    run_custom = st.button("Run Agent")
+
+    instruction = quick_instruction or (user_input if run_custom and user_input.strip() else None)
+
+    if instruction:
+        st.markdown("---")
+        st.markdown(
+            f"<div style='background:#1e2235;border:1px solid #2d3147;border-radius:8px;"
+            f"padding:12px 16px;margin-bottom:16px;color:#94a3b8;font-size:13px'>"
+            f"<span style='color:#6366f1;font-weight:600'>Instruction → </span>{instruction}</div>",
+            unsafe_allow_html=True,
+        )
+
+        with st.spinner("Agent is thinking..."):
+            try:
+                from smartbet_ai.agent.mlops_agent import MLOpsAgent
+                agent = MLOpsAgent()
+                result = agent.execute(instruction)
+                success = True
+            except Exception as exc:
+                result = {"error": str(exc)}
+                success = False
+
+        tool_called = result.get("tool_called", "unknown")
+        args_used   = result.get("args_used", {})
+        outcome     = result.get("result", result)
+
+        t1, t2 = st.columns([1, 2])
+        with t1:
+            st.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Tool Selected by GPT-4</div>
+                <div style="color:#6366f1;font-size:18px;font-weight:700;margin-top:6px">{tool_called}</div>
+            </div>""", unsafe_allow_html=True)
+        with t2:
+            st.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Arguments Used</div>
+                <div style="color:#f1f5f9;font-size:14px;margin-top:6px;font-family:monospace">
+                    {args_used if args_used else "none"}
+                </div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div class='section-title'>Agent Result</div>", unsafe_allow_html=True)
+
+        if "error" in outcome:
+            st.error(f"Agent error: {outcome['error']}")
+
+        elif tool_called == "check_model_performance":
+            status_color = "#22c55e" if outcome.get("status") == "PASS" else "#ef4444"
+            m1, m2, m3 = st.columns(3)
+            m1.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Metric</div>
+                <div class="kpi-value" style="font-size:20px">{outcome.get('metric','—')}</div>
+            </div>""", unsafe_allow_html=True)
+            m2.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Current Value</div>
+                <div class="kpi-value">{outcome.get('current_value', 0):.4f}</div>
+                <div class="kpi-sub">Threshold: {outcome.get('threshold', 0)}</div>
+            </div>""", unsafe_allow_html=True)
+            m3.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Verdict</div>
+                <div class="kpi-value" style="color:{status_color}">{outcome.get('status','—')}</div>
+            </div>""", unsafe_allow_html=True)
+
+        elif tool_called == "detect_data_drift":
+            detected = outcome.get("drift_detected", False)
+            rec = outcome.get("recommendation", "")
+            if detected:
+                st.error(f"🚨 Drift detected — {rec}")
+            else:
+                st.success(f"✅ No drift detected — {rec}")
+            details = outcome.get("details", {})
+            if details:
+                rows = [{"Feature": f, "PSI": round(v.get("psi", 0), 6), "Status": v.get("status", "—")}
+                        for f, v in details.items()]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        elif tool_called == "generate_report":
+            audience = outcome.get("audience", "")
+            st.markdown(f"<div style='color:#6366f1;font-size:12px;font-weight:600;margin-bottom:8px'>"
+                        f"AUDIENCE: {audience.upper()}</div>", unsafe_allow_html=True)
+            headline = outcome.get("headline", "")
+            if headline:
+                st.markdown(f"<div style='color:#f1f5f9;font-size:18px;font-weight:600;margin-bottom:12px'>"
+                            f"{headline}</div>", unsafe_allow_html=True)
+            for finding in outcome.get("key_findings", []):
+                st.markdown(
+                    f"<div style='background:#1e2235;border-left:3px solid #6366f1;padding:10px 14px;"
+                    f"border-radius:0 6px 6px 0;margin-bottom:8px;color:#cbd5e1;font-size:14px'>"
+                    f"{finding}</div>", unsafe_allow_html=True,
+                )
+            if "metrics" in outcome:
+                st.markdown("<div class='section-title' style='margin-top:16px'>Metrics</div>",
+                            unsafe_allow_html=True)
+                st.json(outcome["metrics"])
+
+        elif tool_called == "check_model_status":
+            exists = outcome.get("model_exists", False)
+            path   = outcome.get("model_path", "—")
+            summ   = outcome.get("training_summary", {})
+            st.markdown(f"""<div class="kpi-card">
+                <div class="kpi-label">Model File</div>
+                <div style="color:#f1f5f9;font-size:15px;font-weight:600;margin-top:6px">
+                    {'✅ Found' if exists else '❌ Not found'}
+                </div>
+                <div class="kpi-sub" style="margin-top:4px;font-family:monospace;font-size:11px">{path}</div>
+            </div>""", unsafe_allow_html=True)
+            if summ:
+                s1, s2, s3 = st.columns(3)
+                s1.metric("Best Val Loss",  f"{summ.get('best_val_loss', 0):.4f}")
+                s2.metric("Epochs Trained", summ.get("epochs_trained", "—"))
+                s3.metric("Device",         summ.get("device", "—").upper())
+        else:
+            st.json(outcome)
+
+        with st.expander("Raw JSON response"):
+            st.json(result)
+
+    if "agent_history" not in st.session_state:
+        st.session_state.agent_history = []
+    if instruction and "success" in locals() and success:
+        st.session_state.agent_history.append({"instruction": instruction, "tool": tool_called})
+    if st.session_state.get("agent_history"):
+        st.markdown("---")
+        st.markdown("<div class='section-title'>Session History</div>", unsafe_allow_html=True)
+        for i, item in enumerate(reversed(st.session_state.agent_history[-5:]), 1):
+            st.markdown(
+                f"<div style='color:#475569;font-size:12px;padding:6px 0;border-bottom:1px solid #1e2235'>"
+                f"<span style='color:#6366f1;font-weight:600'>#{i}</span>&nbsp;"
+                f"<span style='color:#94a3b8'>{item['instruction'][:70]}{'...' if len(item['instruction'])>70 else ''}</span>"
+                f"&nbsp;<span style='color:#2d3147'>→</span>&nbsp;"
+                f"<span style='color:#475569'>{item['tool']}</span></div>",
+                unsafe_allow_html=True,
+            )
