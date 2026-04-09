@@ -30,7 +30,7 @@ from smartbet_ai.modeling.inference import ServingBundle, load_serving_bundle, r
 app = FastAPI(
     title="SmartBet AI - Wager Recommendation Engine",
     description="Production API for personalised sports betting market recommendations",
-    version="2.0.0",
+    version="2.1.0",
 )
 
 serving_bundle: ServingBundle | None = None
